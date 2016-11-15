@@ -56,16 +56,28 @@ namespace Cellnet
 
         public void Invoke( object msg)
         {
-            var ev = (SessionEvent)msg;
+            
 
-
-            Action<object> callbacks;
-            if (!_msgCallbacks.TryGetValue(ev.ID, out callbacks))
+            if (msg is SessionEvent )
             {
-                return;
+                var ev = (SessionEvent)msg;
+
+                Action<object> callbacks;
+                if (!_msgCallbacks.TryGetValue(ev.ID, out callbacks))
+                {
+                    return;
+                }
+
+                callbacks.Invoke(msg);
+            }
+            else if ( msg is Action )
+            {
+                var call = (Action)msg;
+                call();
             }
 
-            callbacks.Invoke(msg);
+
+        
         }
 
 
@@ -93,6 +105,7 @@ namespace Cellnet
         {
             Running = true;
             _thread = new Thread(EventLoop);
+            _thread.Name = "EventLoop";
             _thread.IsBackground = true;
             _thread.Start();
         }
@@ -111,8 +124,8 @@ namespace Cellnet
         void EventLoop()
         {
             while( Running )
-            {
-                _queue.Polling();
+            {                
+                _queue.Polling();                
             }
 
             _exitSignal.Set();

@@ -17,8 +17,8 @@ namespace Cellnet
 
         public bool _recvConnected;
 
-        public Connector( EventQueue q )
-            : base( q )
+        public Connector(EventQueue q, Codec c)
+            : base( q, c )
         {
 
         }
@@ -30,7 +30,7 @@ namespace Cellnet
 
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);         
 
-            _session = new Session(_socket, _queue);
+            _session = AddSession(_socket, _queue);            
 
             var addr = new NetworkAddress();
             addr.Resolve(address, ResolveDNS, delegate
@@ -48,14 +48,14 @@ namespace Cellnet
             {
                 _socket.BeginConnect(host, port, new AsyncCallback(HandleConnected), null);
             }
-            catch (SocketException)
+            catch (SocketException ex)
             {
-                _session.PostEvent(SessionEvent.ConnectError);
+                _session.PostError(SessionEvent.ConnectError, ex);
                 _session.Close();
             }
         }
 
-        void HandleConnected(IAsyncResult result)
+        void HandleConnected(IAsyncResult ar)
         {
 
             // 当多个连接过来时, 只有第一个
@@ -64,16 +64,18 @@ namespace Cellnet
 
             try
             {
-                _socket.EndConnect(result);
+                _socket.EndConnect(ar);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                _session.PostEvent(SessionEvent.ConnectError);
+                _session.PostError(SessionEvent.ConnectError, ex);
                 _session.Close();
                 return;
             }
 
             _recvConnected = true;
+
+            _session.ReadHeader();
 
 
             _session.PostEvent(SessionEvent.Connected);            

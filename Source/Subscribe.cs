@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Cellnet
 {
@@ -7,36 +8,41 @@ namespace Cellnet
         public static MessageMeta RegisterMessage<T>( EventDispatcher ed, Action<T, Session> callback ) where T:class
         {
             var meta = MessageMetaSet.GetByType<T>();
+
             if (meta.Equals(MessageMeta.Empty))
-                return MessageMeta.Empty;
-
-            ed.Add(meta.id, (obj) =>
             {
-                var ev = (SessionEvent)obj;                
-
-                callback(null, ev.Ses);
-
-            });
-
-            return meta;
-        }
-
-
-        public static MessageMeta RegisterMessage( EventDispatcher ed, string msgName, Action<object, Session> callback )
-        {
-            var meta = MessageMetaSet.GetByName(msgName);
-            if (meta.Equals( MessageMeta.Empty) )
-                return MessageMeta.Empty;
+                throw new Exception("Register message failed: " + typeof(T).FullName );
+            }
 
             ed.Add(meta.id, (obj) =>
             {
                 var ev = (SessionEvent)obj;
 
-                callback( obj, ev.Ses);
-
+                if ( ev.Stream != null)
+                {
+                    T msg;
+                    if (ev.Ses.Peer.Codec.Decode<T>(meta, ev.Stream.ToStream(), out msg))
+                    {
+                        callback(msg, ev.Ses);
+                    }
+                }
+                else
+                {
+                    callback(null, ev.Ses);
+                }
             });
 
             return meta;
         }
+
+        public static Timer RegisterTimer(EventDispatcher ed, int durationMS, Action callback)
+        {
+            return new Timer( (sender) =>{
+
+                ed.Queue.Post(callback);                
+
+            }, null, 0, durationMS);            
+        }
+
     }
 }

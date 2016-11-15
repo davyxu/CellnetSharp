@@ -26,6 +26,21 @@ namespace gamedef
     {
 
     }
+
+    public class SessionAcceptError
+    {
+
+    }
+    public class SessionAccepted
+    {
+
+    }
+
+    public class SessionListenError
+    {
+
+    }
+
 }
 
 namespace Cellnet
@@ -39,6 +54,9 @@ namespace Cellnet
         public readonly static uint ConnectError = MessageMetaSet.Register(typeof(gamedef.SessionConnectError)).id;
         public readonly static uint RecvError = MessageMetaSet.Register(typeof(gamedef.SessionRecvError)).id;
         public readonly static uint SendError = MessageMetaSet.Register(typeof(gamedef.SessionSendError)).id;
+        public readonly static uint AcceptError = MessageMetaSet.Register(typeof(gamedef.SessionAcceptError)).id;
+        public readonly static uint Accepted = MessageMetaSet.Register(typeof(gamedef.SessionAccepted)).id;
+        public readonly static uint ListenError = MessageMetaSet.Register(typeof(gamedef.SessionListenError)).id;
 
         public uint ID;
         public Session Ses;

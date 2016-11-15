@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace Cellnet
 {
@@ -37,6 +38,11 @@ namespace Cellnet
         public void Notify( )
         {
             _callback(this, _obj);
+        }
+
+        public MemoryStream ToStream()
+        {
+            return new MemoryStream(_data, 0, _size);
         }
 
         public PacketStream( int size, Action<PacketStream, object> callback, object obj )

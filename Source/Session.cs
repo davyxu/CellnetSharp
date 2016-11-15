@@ -17,8 +17,15 @@ namespace Cellnet
         UInt16 _sendTag = 1;
         UInt16 _recvTag = 1;
         object _sendTagGuard = new object();
+        object _recvTagGuard = new object();
 
         EventQueue _queue;
+
+        Peer _peer;
+
+        Int64 _id;
+
+        public Action InternalOnClose;
 
         /// <summary>
         /// 超时时长
@@ -39,15 +46,27 @@ namespace Cellnet
             }
         }
 
-
-        public Session(Socket s, EventQueue q )
+        public Peer Peer
         {
+            get { return _peer; }
+        }
+
+        public Int64 ID
+        {
+            get { return _id; }            
+        }
+
+
+        public Session(Peer p, Socket s, EventQueue q, Int64 id )
+        {
+            _peer = p;
             _socket = s;
             _queue = q;
+            _id = id;
             _sendTag = 1;
             _recvTag = 1;
         }
-        void ReadHeader()
+        internal void ReadHeader()
         {
             ReadPacket(new PacketStream( PacketHeader.HeaderSize, HandleReadHeader, null));        
         }
@@ -59,7 +78,14 @@ namespace Cellnet
         /// <returns></returns>
         void HandleReadHeader(PacketStream ps, object obj)
         {
-            PacketHeader header = PacketSerializer.ReadHeader(ps, _recvTag);
+            UInt16 thisTag = 0;
+            lock (_recvTagGuard)
+            {
+                thisTag = _recvTag;
+            }
+            
+
+            PacketHeader header = PacketSerializer.ReadHeader(ps, thisTag);
 
             if ( header.Valid)
             {
@@ -68,7 +94,7 @@ namespace Cellnet
                 // 还有包体
                 if (size > 0)
                 {
-                    ReadPacket(new PacketStream( size, HandleReadHeader, header));
+                    ReadPacket(new PacketStream(size, HandleReadBody, header));
                 }
                 else
                 {                    
@@ -81,8 +107,8 @@ namespace Cellnet
 
             }
             else
-            {                
-                PostEvent(SessionEvent.RecvError);
+            {
+                PostError(SessionEvent.RecvError, new Exception("packet crack") );
                 Close();                
             }
         }
@@ -92,19 +118,30 @@ namespace Cellnet
             var header = (PacketHeader)obj;
 
             PostPacket(header, ps);
+
+            ReadHeader();
         }
 
         void PostPacket(PacketHeader header, PacketStream stream)
         {            
             _queue.Post( new SessionEvent(this, header.MsgID, stream));
-            _recvTag++;
+
+            lock (_recvTagGuard)
+            {
+                _recvTag++;
+            }
+            
         }
 
-        public void PostEvent( uint msgid )
+        internal void PostEvent(uint msgid)
         {
             _queue.Post(new SessionEvent(this, msgid, null));
         }
 
+        internal void PostError(uint msgid, Exception ex)
+        {
+            _queue.Post(new SessionEvent(this, msgid, null));
+        }
 
         void ReadPacket(PacketStream ps)
         {
@@ -146,13 +183,23 @@ namespace Cellnet
                 Close();
             }            
         }
+
+        public bool Send<T>( T msg ) where T:class
+        {
+            MemoryStream stream = null;
+            MessageMeta meta = MessageMeta.Empty;
+            if (!_peer.Codec.Encode<T>(msg, out meta, out stream))
+                return false;
+
+            return RawSend(meta.id, stream.ToArray());
+        }
         
 
-        public void SendPacket(UInt32 msgID, byte[] payload)
+        public bool RawSend(UInt32 msgID, byte[] payload)
         {
             if (_socket == null || !_socket.Connected || payload == null)
             {
-                return;
+                return false;
             }
 
             var header = new PacketHeader();
@@ -171,11 +218,13 @@ namespace Cellnet
 
 
             }
-            catch (Exception)
+            catch (Exception ex )
             {                
-                PostEvent(SessionEvent.SendError);
+                PostError(SessionEvent.SendError, ex);
+                return false;
             }
 
+            return true;
         }
 
         void SendStream(PacketStream ps)
@@ -190,7 +239,7 @@ namespace Cellnet
 
         void HandleSend(IAsyncResult ar)
         {
-            var ps = ar as PacketStream;
+            var ps = ar.AsyncState as PacketStream;
 
             try
             {
@@ -201,9 +250,9 @@ namespace Cellnet
                     SendStream(ps);
                 }                
             }
-            catch( Exception )
+            catch( Exception ex)
             {                
-                PostEvent(SessionEvent.SendError);
+                PostError(SessionEvent.SendError, ex);
             }
            
         }
@@ -224,6 +273,8 @@ namespace Cellnet
             //关闭socket
             if (_socket == null)
                 return;
+
+            _peer.RemoveSession(ID);
 
 
             if (_socket.Connected)

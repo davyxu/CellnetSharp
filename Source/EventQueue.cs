@@ -36,16 +36,15 @@ namespace Cellnet
         {
             get;
             set;
-        }        
-
+        }
+        
         public void Post( object data)
         {
             lock (_msgQueueGuard)
             {                
-                _msgQueue.Enqueue(new EventData(data, DateTime.UtcNow));
+                _msgQueue.Enqueue(new EventData(data, DateTime.UtcNow));               
             }
         }
-
 
 
         public void Polling( )

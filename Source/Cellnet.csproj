@@ -42,10 +42,15 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Codec.cs" />
+    <Compile Include="Acceptor.cs" />
     <Compile Include="Connector.cs" />
     <Compile Include="EventDispatcher.cs" />
     <Compile Include="EventQueue.cs" />
+    <Compile Include="MessageMetaSet.cs" />
     <Compile Include="MessageMeta.cs" />
+    <Compile Include="PacketSerializer.cs" />
+    <Compile Include="ProtobufCodec.cs" />
     <Compile Include="Subscribe.cs" />
     <Compile Include="NetworkAddress.cs" />
     <Compile Include="Packet.cs" />
@@ -54,6 +59,12 @@
     <Compile Include="SessionEvent.cs" />
     <Compile Include="Session.cs" />
     <Compile Include="StringHash.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\protobuf-net\protobuf-net.csproj">
+      <Project>{8374e4d7-2a91-48f1-9360-09b09cf27c3f}</Project>
+      <Name>protobuf-net</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
