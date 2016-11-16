@@ -124,7 +124,9 @@ namespace Cellnet
         void EventLoop()
         {
             while( Running )
-            {                
+            {
+                _queue.WaitEvent();
+
                 _queue.Polling();                
             }
 

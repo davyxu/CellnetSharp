@@ -37,17 +37,58 @@ namespace Cellnet
             get;
             set;
         }
-        
+
+        Semaphore _signal = new Semaphore(0, 1);
+
+        bool _proc;
+        object _procGuard = new object();
+        bool Processing
+        {
+            get
+            {
+                lock (_procGuard)
+                {
+                    return _proc;
+                }
+            }
+            set
+            {
+                lock (_procGuard)
+                {
+                    _proc = value;
+                }
+            }
+        }
+
         public void Post( object data)
         {
             lock (_msgQueueGuard)
             {                
-                _msgQueue.Enqueue(new EventData(data, DateTime.UtcNow));               
+                _msgQueue.Enqueue(new EventData(data, DateTime.UtcNow));
+
+                if (!Processing)
+                {
+                    try
+                    {
+                        _signal.Release();
+                    }
+                    catch( Exception )
+                    {
+                        int a = 1;
+                    }
+                    
+                }
+                
             }
         }
 
+        internal void WaitEvent( )
+        {
+            _signal.WaitOne();
+        }
 
-        public void Polling( )
+
+        internal void Polling( )
         {
             // 有延迟消息到达投递点
             if (EmulateDelayMS > 0 && _delayQueue.Count > 0)
@@ -64,29 +105,36 @@ namespace Cellnet
                 }
             }
 
-            EventData ev;
-
-            lock (_msgQueueGuard)
+            Processing = true;
+            while( true )
             {
-                if (_msgQueue.Count == 0)
+                EventData ev;
+
+                lock (_msgQueueGuard)
                 {
-                    return;
+                    if (_msgQueue.Count == 0)
+                    {
+                        break;
+                    }
+
+                    ev = _msgQueue.Dequeue();
                 }
 
-                ev = _msgQueue.Dequeue();
+                if (EmulateDelayMS > 0)
+                {
+                    _delayQueue.Enqueue(ev);
+                }
+                else
+                {
+                    if (OnEvent != null)
+                    {
+                        OnEvent(ev.Data);
+                    }
+                }
             }
 
-            if (EmulateDelayMS > 0)
-            {                
-                _delayQueue.Enqueue(ev);
-            }
-            else
-            {
-                if (OnEvent != null)
-                {
-                    OnEvent(ev.Data);
-                }                
-            }
+            Processing = false;
+
         }
     }
 }
