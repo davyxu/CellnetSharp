@@ -38,7 +38,7 @@ namespace Cellnet
             set;
         }
 
-        Semaphore _signal = new Semaphore(0, 1);
+        ManualResetEvent _signal = new ManualResetEvent(false);
 
         bool _proc;
         object _procGuard = new object();
@@ -68,14 +68,7 @@ namespace Cellnet
 
                 if (!Processing)
                 {
-                    try
-                    {
-                        _signal.Release();
-                    }
-                    catch( Exception )
-                    {
-                        int a = 1;
-                    }
+                    _signal.Set();
                     
                 }
                 
@@ -133,7 +126,9 @@ namespace Cellnet
                 }
             }
 
+            _signal.Reset();
             Processing = false;
+            
 
         }
     }
