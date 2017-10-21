@@ -187,6 +187,5 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
-Source/PacketSerializer.cs
 proto/protoc.exe
 proto/protoc-gen-sharpnet.exe
